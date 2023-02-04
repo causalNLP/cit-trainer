@@ -43,12 +43,15 @@ def center_kernel_matrix_regression(K, Kz, epsilon):
     Centers the kernel matrix via a centering matrix R=I-Kz(Kz+\epsilonI)^{-1} and returns RKR
     """
     n = shape(K)[0]
-    #Rz = epsilon * pinv(Kz.detach().numpy() + epsilon * eye(n))
-    Rz_torch = epsilon * pinv_torch(Kz + epsilon * eye_torch(n))
-    #ic(Rz, Rz_torch)
-    #ic(Rz.dot(K.detach().numpy().dot(Rz)))
-    #ic(Rz_torch.mm(K.mm(Rz_torch)))
-    #exit(0)
+    eye = eye_torch(n)
+    if torch.cuda.is_available():
+        eye = eye.cuda()
+    try:
+        Rz_torch = epsilon * pinv_torch(Kz + epsilon * eye)
+    except:
+        ic(epsilon, Kz, epsilon)
+        ic(eye_torch(n))
+        raise Exception('pinv_torch failed')
     return Rz_torch.mm(K.mm(Rz_torch)), Rz_torch
 
 
@@ -65,6 +68,8 @@ class GaussianKernel(Kernel):
         pdist_gradient = torch.nn.functional.pdist(X, p=2)
         pdist_gradient = pdist_gradient * pdist_gradient
         pdist_padding = torch.tensor([0.0], requires_grad = True)
+        if (torch.cuda.is_available()):
+            pdist_padding = pdist_padding.cuda()
         sq_dists_gradient = None
         idx = 0
         idx_line = 0
@@ -78,6 +83,7 @@ class GaussianKernel(Kernel):
                 sq_line_gradient = torch.cat((sq_dists_gradient[:, idx_line], pdist_padding, pdist_gradient[idx: idx+n-idx_line-1]), 0)
             else:
                 sq_line_gradient = torch.cat((pdist_padding, pdist_gradient[idx: idx+n-idx_line-1]), 0)
+
             sq_line_gradient = sq_line_gradient.reshape((1, n))
             #ic(sq_line_gradient.shape)
             idx = idx+n-idx_line-1
@@ -188,15 +194,15 @@ class KCI_CInd_Gradient(object):
         test_stat, KxR, KyR = self.KCI_V_statistic(Kx, Ky, Kzx, Kzy)
         # test_stat need gradient
 
-        KxR = KxR.detach().numpy()
-        KyR = KyR.detach().numpy()
+        KxR = KxR.cpu().detach().numpy()
+        KyR = KyR.cpu().detach().numpy()
         #ic(test_stat.shape, KxR.shape, KyR.shape)
         uu_prod, size_u = self.get_uuprod(KxR, KyR)
         loss = None
         #ic(uu_prod.shape, size_u)
         if self.approx:
             k_appr, theta_appr, mean_appr, var_appr = self.get_kappa(uu_prod)
-            pvalue = 1 - stats.gamma.cdf(test_stat.detach().numpy(), k_appr, 0, theta_appr)
+            pvalue = 1 - stats.gamma.cdf(test_stat.cpu().detach().numpy(), k_appr, 0, theta_appr)
             std_appr = math.sqrt(var_appr)
             loss = (test_stat-mean_appr-std_appr)/(std_appr+self.epsilon)
             if (loss<0):
@@ -229,11 +235,19 @@ class KCI_CInd_Gradient(object):
         #print(torch.mean(data_x, 1, True))
         def zscore_tensor(data):
             data = data - torch.mean(data, 0)
-            data_array = data.detach().numpy()
+            # convert data to numpy array
+            data_array = data.cpu().detach().numpy()
             #ic(np.maximum(np.std(data_array, axis = 0), np.array([1e-12]*len(data_array[0]))))
             #ic(data_array.shape, np.std(data_array, axis = 0).shape, np.array([1e-12]*len(data_array[0])).shape)
             data_var = np.maximum(np.std(data_array, axis = 0), np.array([1e-12]*data_array.shape[1])).reshape((1,-1))
-            data = data/torch.tensor(data_var)
+            if (torch.cuda.is_available()):
+                data_var = torch.tensor(data_var).cuda()
+            #ic(data, data_var)
+            try:
+                data = data/data_var
+            except:
+                ic(data, data_var)
+                raise Exception("Error in zscore_tensor")
             return data
 
         data_x = zscore_tensor(data_x)

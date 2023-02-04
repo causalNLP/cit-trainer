@@ -17,8 +17,11 @@ class ToyEstimator(nn.Module):
         self.fc2 = nn.Linear(120, output_dim)
 
     def forward(self, x):
-        #ic(x.shape)
-        #ic("################################")
+        #ic(x.shape
+        if (type(x)!=torch.Tensor):
+            x = torch.tensor(x, dtype=torch.float32)
+        if (torch.cuda.is_available()):
+            x = x.cuda()
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
@@ -43,10 +46,15 @@ class ToyRegresser(nn.Module):
     def forward(self, x, output = None):
         ans = None
         for i in x.keys():
+            if (type(x[i]) != torch.Tensor):
+                x[i] = torch.tensor(x[i])
+            if (torch.cuda.is_available()):
+                x[i] = x[i].cuda()
             if (ans is None):
-                ans = self.fc1_dict[i](x[i])
+                ans = self.fc1_dict[i](x[i])*self.lambda_dict[i]
             else:
-                ans += self.fc1_dict[i](x[i])
+                #ic(ans, x[i], self.fc1_dict, i)
+                ans += self.fc1_dict[i](x[i])*self.lambda_dict[i]
         ans = self.fc2(ans)
         if (output == None):
             return ans

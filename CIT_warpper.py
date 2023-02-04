@@ -7,12 +7,16 @@ import torch
 def run_CIT(X, Y, Z, tester_type = 1):
     # This function is used to generate the causal effect of Y on X given Z
     # Output: the p-value of Y \bot X | Z
-    if type(X) == np.ndarray:
+    if type(X) != torch.Tensor:
         X = torch.tensor(X)
-    if type(Y) == np.ndarray:
+    if type(Y) != torch.Tensor:
         Y = torch.tensor(Y)
-    if type(Z) == np.ndarray:
+    if type(Z) != torch.Tensor:
         Z = torch.tensor(Z)
+    if torch.cuda.is_available():
+        X = X.cuda()
+        Y = Y.cuda()
+        Z = Z.cuda()
 
     if (tester_type==0):
         ci_tester = KCI_CInd()
