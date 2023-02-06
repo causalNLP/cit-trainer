@@ -16,7 +16,7 @@ def get_dataset():
 
 def get_simulatedDataset_IRM(n = 100000, group_number = 1):
     from sample_datapoint import generate_datapoint_IRM
-    dataset_path = f"./dataset/simulatedIRMs/{n}_{group_number}"
+    dataset_path = f"./dataset/simulatedIRMs_newData/{n}_{group_number}"
     if (os.path.exists(dataset_path)):
         # load huggingface dataset
         dataset = datasets.load_from_disk(dataset_path)
@@ -28,10 +28,10 @@ def get_simulatedDataset_IRM(n = 100000, group_number = 1):
             curr_env = 0
             if group_number == 1:
                 # generate a Gaussian distribution with mean 0 and std 1
-                curr_env = np.random.random()
+                curr_env = np.random.normal()
             elif group_number == 2:
                 # generate a Gaussian distribution with mean 1 and std 1
-                curr_env = np.random.random() + 1
+                curr_env = np.random.normal() + 1
             else:
                 raise "Invalid group number"
             x_1, x_2, y, env = generate_datapoint_IRM(env = curr_env)

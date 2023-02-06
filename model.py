@@ -31,8 +31,8 @@ class ToyRegresser(nn.Module):
         # The sample_dataDict is a dictionary of a sample data
         # e.g. {"x_1":[0, 0], "x_2":[0, 0], "env":[0]}
         super().__init__()
-        self.fc1_dict = {}
-        self.lambda_dict = {}
+        self.fc1_dict = nn.ModuleDict({})
+        self.lambda_dict = nn.ParameterDict({})
         for i in sample_dataDict.keys():
             self.fc1_dict[i] = nn.Linear(len(sample_dataDict[i]), 120)
             self.lambda_dict[i] = nn.Parameter(torch.tensor(1.0))

@@ -43,8 +43,8 @@ def generate_dataset(data_function = generate_datapoint, sample_dim = 32, is_cha
 # The causal relationship is X_1->Y->X_2, while X_1 and Y are the effect by the environment
 # See https://drive.google.com/file/d/1PHdeO-gMLSgYDXGEwx72sSpCb6H2deXX/view?usp=share_link
 def generate_datapoint_IRM(env = 1, d = 2):
-    x_1 = torch.randn(d) * env
-    y = x_1 + torch.randn(d) * env
+    x_1 = (torch.randn(d) + 1) * env
+    y = x_1 + (torch.randn(d) + 1) * env
     x_2 = y + torch.randn(d)
     #ic(x_1, x_2, y.sum(0, keepdim=True), env)
     return np.array(x_1), np.array(x_2), np.array(y.sum(0, keepdim=True)), np.array([env])

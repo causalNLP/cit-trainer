@@ -8,7 +8,7 @@ def do_IRM_experiment(args, output_path):
     ic(dataset)
     from trainer import Trainer
     trainer = Trainer(dataset, ['x_1', 'x_2', 'env'],
-                      [['input', 'x_1'], ['input', 'x_2'], ['input', 'env']],
+                      [['input', 'x_1'], ['input', 'x_2'], ['x_1', 'env']],
                       [['x_1', 'x_2', 'y'], ['env', 'x_2', 'y']],
                       lambda_ci=args.lambda_ci, lambda_R=args.lambda_R, output_dir=output_path)
     if (torch.cuda.is_available()):
@@ -38,6 +38,8 @@ if __name__ == '__main__':
     if (not os.path.exists(output_path)):
         os.makedirs(output_path)
     if args.exp_name == 'simulated_IRM':
+        do_IRM_experiment(args, output_path)
+    elif args.exp_name == 'simulated_IRM_newData':
         do_IRM_experiment(args, output_path)
     else:
         raise NotImplementedError

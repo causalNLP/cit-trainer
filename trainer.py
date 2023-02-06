@@ -14,6 +14,8 @@ import numpy as np
 from tqdm import trange
 from icecream import ic
 
+from utils import *
+
 def preprocessing_dataset(dataset_dict, batch_size, keys_list = ['X_indY', 'X_indZ', 'X_YnZ']):
     # input: dict of 2-d list/torch.tensor; output: torch.tensor, split_sign
     # 1. X_indY, X_indZ, X_YnZ -> mixed_X
@@ -37,43 +39,6 @@ def preprocessing_dataset_nlp(dataset_dict, batch_size, key_list = ['text']):
     # 可以都试试
     pass
 """
-def to_list(arr):
-    if isinstance(arr, list):
-        return arr
-    elif isinstance(arr, np.ndarray):
-        return arr.tolist()
-    elif isinstance(arr, torch.Tensor):
-        return arr.detach().cpu().numpy().tolist()
-    elif arr == None:
-        return 0
-    else:
-        raise ValueError('Unknown type: {}'.format(type(arr)))
-
-def to_tensor(arr):
-    if isinstance(arr, list):
-        return torch.tensor(arr)
-    elif isinstance(arr, np.ndarray):
-        return torch.tensor(arr)
-    elif isinstance(arr, torch.Tensor):
-        return arr
-    else:
-        raise ValueError('Unknown type: {}'.format(type(arr)))
-
-def to_tensor_device(arr):
-    tensor_arr = to_tensor(arr)
-    if torch.cuda.is_available():
-        tensor_arr = tensor_arr.cuda()
-    return tensor_arr
-
-def to_numpy(arr):
-    if isinstance(arr, list):
-        return np.array(arr)
-    elif isinstance(arr, np.ndarray):
-        return arr
-    elif isinstance(arr, torch.Tensor):
-        return arr.detach().cpu().numpy()
-    else:
-        raise ValueError('Unknown type: {}'.format(type(arr)))
 
 class Trainer(nn.Module):
     #随机选择80%的作为training; 20%的作为test: randomshuffle+traintest split
@@ -108,17 +73,23 @@ class Trainer(nn.Module):
         for i in range(len(self.model_pairs)):
             model_pair = self.model_pairs[i]
             if (self.estimator_model_dict.get(model_pair[1])==None):
+
+                if (model_pair[0] in self.invisible_variables):
+                    input_dim = 2
+                else:
+                    input_dim = len(dataset[0][model_pair[0]])
+
                 output_dim = 2
                 if (model_pair[1] in dataset[0].keys()):
                     output_dim = len(dataset[0][model_pair[1]])
+
                 elif (not (model_pair[1] in self.invisible_variables)):
                     self.invisible_variables.append(model_pair[1])
-                self.estimator_model_dict[model_pair[1]] = ToyEstimator(input_dim = len(dataset[0][model_pair[0]]), output_dim = output_dim)
+                self.estimator_model_dict[model_pair[1]] = ToyEstimator(input_dim = input_dim, output_dim = output_dim)
                 self.models.append(self.estimator_model_dict[model_pair[1]])
             # In our simplified model, we assume that the estimator only have one causes,
             # It also can have many causes, the code should be improved
-        ic(self.estimator_model_dict)
-        ic(self.invisible_variables)
+
         self.direct_causes = direct_causes
         sample_dict = {}
         for i in direct_causes:
@@ -133,6 +104,8 @@ class Trainer(nn.Module):
         # regresser不唯一，每一条model pair都是, 后续代码里需要修改
 
         self.models = nn.ModuleList(self.models)
+        #ic(self.models)
+        #exit(0)
         self.CI_pairs = CI_pairs # n*3*i
         self.lambda_ci = lambda_ci
         self.lambda_R = lambda_R
@@ -151,15 +124,22 @@ class Trainer(nn.Module):
         evaluated_dict = {}
         for i in range(len(self.model_pairs)):
             model_pair = self.model_pairs[i]
-            input_datapoint = torch.tensor(dataset_dict[model_pair[0]])
+            if (model_pair[0] in dataset_dict.keys()):
+                input_datapoint = torch.tensor(dataset_dict[model_pair[0]])
+            else:
+                input_datapoint = torch.tensor(evaluated_dict[model_pair[0]])
             evaluated_dict[model_pair[1]] = self.estimator_model_dict[model_pair[1]](input_datapoint)
         result = self.regressor(evaluated_dict, dataset_dict['y'])
         return evaluated_dict, result[0], result[1] # evaluation of all variable, regression result, loss
 
-    def inference(self, testSet = True, batch_size = 32):
+    def inference(self, dataset = None, testSet = True, batch_size = 32):
         # inference the whole dataset
         # Output:
         # result_dict: dict of list of tensor, the evaluated value of each variable,
+        if (dataset != None):
+            self.dataset = dataset
+            # it is a risky operation, must guarantee that the dataset has the same size as the one used to train the model
+
         result_dict = {}
         for model_pair in self.model_pairs:
             result_dict[model_pair[1]] = []
@@ -182,7 +162,10 @@ class Trainer(nn.Module):
             result_dict['y'].append(result_batch)
             result_dict['loss'].append(loss_batch)
         for key in result_dict.keys():
-            result_dict[key] = to_list(torch.cat(result_dict[key], dim = 0))
+            if (key=='loss'):
+                result_dict[key] = [to_list(i) for i in result_dict[key]]
+            else:
+                result_dict[key] = to_list(torch.cat(result_dict[key], dim = 0))
         return result_dict
 
     # Too large batch size CIT?
@@ -212,7 +195,10 @@ class Trainer(nn.Module):
                     #ic(self.batch_idx[i:i+batch_size], batch_data)
 
                     for model_pair in self.model_pairs:
-                        input_datapoint = torch.tensor(batch_data[model_pair[0]])
+                        if (model_pair[0] in batch_data.keys()):
+                            input_datapoint = torch.tensor(batch_data[model_pair[0]])
+                        else:
+                            input_datapoint = self.estimator_batch_temp[model_pair[0]][-1]
                         self.estimator_batch_temp[model_pair[1]].append(self.estimator_model_dict[model_pair[1]](input_datapoint))
 
             # Then inference 8*64 with grad and loss backpropagation
@@ -226,7 +212,10 @@ class Trainer(nn.Module):
                 #print("we calculate the batch_data_idx is ", self.batch_idx[i:i+batch_size])
 
                 for model_pair in self.model_pairs:
-                    input_datapoint = torch.tensor(batch_data[model_pair[0]])
+                    if (model_pair[0] in batch_data.keys()):
+                        input_datapoint = torch.tensor(batch_data[model_pair[0]])
+                    else:
+                        input_datapoint = self.estimator_batch_temp[model_pair[0]][i//batch_size]
                     self.estimator_batch_temp[model_pair[1]][i // batch_size] = self.estimator_model_dict[model_pair[1]](input_datapoint)
                     #ic(model_pair[1], self.estimator_batch_temp[model_pair[1]][i // batch_size])
                 """
@@ -317,6 +306,7 @@ class Trainer(nn.Module):
 
     def load_checkpoint(self, checkpoint_path):
         self.models.load_state_dict(torch.load(checkpoint_path))
+        self.regressor = self.models[-1]
         # self.models.eval()
 
     # this function is used to evaluate the model, which is the performance on the inference mode on the test set
@@ -351,7 +341,11 @@ class Trainer(nn.Module):
 
                     for model_pair in self.model_pairs:
                         #ic(batch_data, model_pair)
-                        input_datapoint = torch.tensor(batch_data[model_pair[0]])
+
+                        if (model_pair[0] in self.invisible_variables):
+                            input_datapoint = self.estimator_batch_temp[model_pair[0]][-1]
+                        else:
+                            input_datapoint = torch.tensor(batch_data[model_pair[0]])
                         self.estimator_batch_temp[model_pair[1]].append(self.estimator_model_dict[model_pair[1]](input_datapoint))
 
                     data = {}
