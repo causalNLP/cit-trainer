@@ -1,3 +1,4 @@
+from utils import *
 import torch
 import math
 import numpy as np
@@ -205,12 +206,15 @@ class KCI_CInd_Gradient(object):
             pvalue = 1 - stats.gamma.cdf(test_stat.cpu().detach().numpy(), k_appr, 0, theta_appr)
             std_appr = math.sqrt(var_appr)
             loss = (test_stat-mean_appr-std_appr)/(std_appr+self.epsilon)
+            # the loss is the distance between the test statistic and the mean+std of the gamma distribution
             if (loss<0):
-                loss = 0
-            # loss = loss*loss
+                loss = torch.tensor(0.0)
+            loss = loss*loss
+            # if the loss is not 0, then penalize the gradient by the square of the loss
         else:
             null_samples = self.null_sample_spectral(uu_prod, size_u, Kx.shape[0])
             pvalue = sum(null_samples > test_stat) / float(self.nullss)
+            # can not calculate the gradient of loss
 
         return pvalue, test_stat, loss
 
@@ -240,8 +244,9 @@ class KCI_CInd_Gradient(object):
             #ic(np.maximum(np.std(data_array, axis = 0), np.array([1e-12]*len(data_array[0]))))
             #ic(data_array.shape, np.std(data_array, axis = 0).shape, np.array([1e-12]*len(data_array[0])).shape)
             data_var = np.maximum(np.std(data_array, axis = 0), np.array([1e-12]*data_array.shape[1])).reshape((1,-1))
+            data_var = torch.tensor(data_var)
             if (torch.cuda.is_available()):
-                data_var = torch.tensor(data_var).cuda()
+                data_var = data_var.cuda()
             #ic(data, data_var)
             try:
                 data = data/data_var

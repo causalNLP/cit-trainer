@@ -34,13 +34,13 @@ def get_simulatedDataset_IRM(n = 100000, group_number = 1):
                 curr_env = np.random.normal() + 1
             else:
                 raise "Invalid group number"
-            x_1, x_2, y, env = generate_datapoint_IRM(env = curr_env)
+            x_1, x_2, y, env = generate_datapoint_IRM(env = curr_env, d = 1)
             dataset_dict["x_1"].append(x_1)
             dataset_dict["x_2"].append(x_2)
             dataset_dict["y"].append(y)
             dataset_dict["env"].append(env)
             # concat x_1, x_2, np.array(torch.randn(6))
-            dataset_dict["input"].append(np.concatenate([x_1, x_2, np.array(torch.randn(6))]))
+            dataset_dict["input"].append(np.concatenate([x_1, x_2]))
         from datasets import Dataset
         dataset = Dataset.from_dict(dataset_dict)
         dataset.save_to_disk(dataset_path)
