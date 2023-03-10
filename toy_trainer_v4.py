@@ -1,6 +1,8 @@
 """
 Compare with V2:
 reduce the dimension of x1 and x2 to 1
+
+Current Trainer
 """
 import torch
 import torch.nn as nn
