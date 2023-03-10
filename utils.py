@@ -32,7 +32,7 @@ def to_tensor_device(arr):
 def to_numpy(arr):
     if isinstance(arr, list):
         return np.array(arr)
-    elif isinstance(arr, np.ndarray):
+    elif isinstance(arr, np.ndarray) or isinstance(arr, np.generic):
         return arr
     elif isinstance(arr, torch.Tensor):
         return arr.detach().cpu().numpy()

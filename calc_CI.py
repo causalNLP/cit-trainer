@@ -209,7 +209,7 @@ class KCI_CInd_Gradient(object):
             # the loss is the distance between the test statistic and the mean+std of the gamma distribution
             if (loss<0):
                 loss = torch.tensor(0.0)
-            loss = loss*loss
+            loss = loss * loss
             # if the loss is not 0, then penalize the gradient by the square of the loss
         else:
             null_samples = self.null_sample_spectral(uu_prod, size_u, Kx.shape[0])

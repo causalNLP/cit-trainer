@@ -14,10 +14,11 @@ def get_dataset():
     dataset = Dataset.from_dict(dataset_dict)
     return dataset
 
-def get_simulatedDataset_IRM(n = 100000, group_number = 1):
+def get_simulatedDataset_IRM(n = 100000, group_number = 1, new_data = False, remove_columns = True):
     from sample_datapoint import generate_datapoint_IRM
-    dataset_path = f"./dataset/simulatedIRMs_newData/{n}_{group_number}"
-    if (os.path.exists(dataset_path)):
+    dataset_path = f"./dataset/simulatedIRMs_newData_v2/{n}_{group_number}"
+    # if (os.path.exists(dataset_path)):
+    if not new_data and os.path.exists(dataset_path):
         # load huggingface dataset
         dataset = datasets.load_from_disk(dataset_path)
         print("Dataset loaded from disk")
@@ -45,8 +46,12 @@ def get_simulatedDataset_IRM(n = 100000, group_number = 1):
         dataset = Dataset.from_dict(dataset_dict)
         dataset.save_to_disk(dataset_path)
     # delete x_1, x_2 columns from dataset
-    dataset = dataset.remove_columns(["x_1", "x_2"])
+    if remove_columns:
+        dataset = dataset.remove_columns(["x_1", "x_2"])
     return dataset
+
+def get_simulatedDataset_ST(n = 100000, group_number = 1, new_data = False, remove_columns = True, causal = True):
+    pass
 
 if __name__ == "__main__":
     """

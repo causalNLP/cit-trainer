@@ -5,16 +5,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import MSELoss
 
-input_dim = 10
-output_dim = 2
-
+hidden_dim = 10
 # Input: 32*3 dim
 # Output: 32 dim
 class ToyEstimator(nn.Module):
-    def __init__(self, input_dim = input_dim, output_dim = output_dim):
+    def __init__(self, input_dim = 2, output_dim = 1):
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, 120)
-        self.fc2 = nn.Linear(120, output_dim)
+        self.fc1 = nn.Linear(input_dim, hidden_dim*4)
+        self.fc2 = nn.Linear(hidden_dim*4, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         #ic(x.shape
@@ -25,7 +24,7 @@ class ToyEstimator(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-
+"""
 class ToyRegresser(nn.Module):
     def __init__(self, sample_dataDict):
         # The sample_dataDict is a dictionary of a sample data
@@ -63,6 +62,7 @@ class ToyRegresser(nn.Module):
             if (torch.cuda.is_available()):
                 output = output.cuda()
             return ans, self.loss(ans, output)
+"""
 
 #TODO
 class BertEstimator(nn.Module):
